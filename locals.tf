@@ -23,7 +23,22 @@ locals {
       vpc_zone_identifier       = try(config.vpc_zone_identifier, null)
       target_group_arns         = try(config.target_group_arns, [])
     }
-  ]))
+  ]), [])
+
+  schedule_config = flatten([
+    for config in local.config : [
+      for rule in config.schedule : {
+        group_name       = config.name
+        is_vpc           = try(config.vpc_zone_identifier, null) != null ? true : false
+        name             = rule.name
+        min_size         = rule.min_size
+        max_size         = rule.max_size
+        desired_capacity = rule.desired_capacity
+        start_time       = rule.start_time
+        end_time         = rule.end_time
+      }
+    ]
+  ])
 
   # IAM role (instance profile) configuration
   instance_profile_config = try(flatten([

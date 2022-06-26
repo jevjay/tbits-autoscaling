@@ -224,3 +224,15 @@ resource "aws_launch_template" "asg" {
 
   user_data = base64encode(file("${path.module}/${each.value.user_data}"))
 }
+
+resource "aws_autoscaling_schedule" "asg" {
+  for_each = { for i in local.schedule_config : i.name => i }
+
+  scheduled_action_name  = each.value.name
+  min_size               = each.value.min_size
+  max_size               = each.value.max_size
+  desired_capacity       = each.value.desired_capacity
+  start_time             = each.value.start_time
+  end_time               = each.value.end_time
+  autoscaling_group_name = each.value.is_vpc ? aws_autoscaling_group.asg_vpc[each.value.group_name].name : aws_autoscaling_group.asg_az[each.value.group_name].name
+}
