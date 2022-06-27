@@ -25,7 +25,7 @@ locals {
     }
   ]), [])
 
-  schedule_config = flatten([
+  schedule_config = try(flatten([
     for config in local.config : [
       for rule in config.schedule : {
         group_name       = config.name
@@ -38,7 +38,65 @@ locals {
         end_time         = rule.end_time
       }
     ]
-  ])
+  ]), [])
+
+  scaling_config = try(flatten([
+    for config in local.config : [
+      for policy in config.scaling : {
+        group_name         = config.name
+        is_vpc             = try(config.vpc_zone_identifier, null) != null ? true : false
+        name               = policy.name
+        scaling_adjustment = policy.scaling_adjustment
+        adjustment_type    = policy.adjustment_type
+        cooldown           = policy.cooldown
+        policy_type        = try(policy.type, "SimpleScaling")
+
+        predictive_scaling_configuration = try(flatten([
+          for cfg in policy.predictive_scaling_configuration : {
+            metric_specification = {
+              target_value = lookup(cfg.metric_specification, "target_value", null)
+
+              customized_load_metric = try(flatten([
+                for load_metric in lookup(cfg.metric_specification, "customized_load_metric", {}) : [
+                  for data_queries in load_metric.metric_data_queries : {
+                    id          = data_queries.id
+                    expression  = data_queries.expression
+                    return_data = data_queries.return_data
+                    label       = data_queries.label
+                    metric_stat = {}
+                  }
+                ]
+              ]), {})
+
+              customized_capacity_metric = try(flatten([
+                for capacity_metric in lookup(cfg.metric_specification, "customized_capacity_metric", {}) : [
+                  for data_queries in capacity_metric.metric_data_queries : {
+                    id          = data_queries.id
+                    expression  = data_queries.expression
+                    return_data = data_queries.return_data
+                    label       = data_queries.label
+                    metric_stat = {}
+                  }
+                ]
+              ]), {})
+
+              customized_scaling_metric = try(flatten([
+                for scaling_metric in lookup(cfg.metric_specification, "customized_scaling_metric", {}) : [
+                  for data_queries in scaling_metric.metric_data_queries : {
+                    id          = data_queries.id
+                    expression  = data_queries.expression
+                    return_data = data_queries.return_data
+                    label       = data_queries.label
+                    metric_stat = {}
+                  }
+                ]
+              ]), {})
+            }
+          }
+        ]), {})
+      }
+    ]
+  ]), [])
 
   # IAM role (instance profile) configuration
   instance_profile_config = try(flatten([

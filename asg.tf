@@ -228,11 +228,110 @@ resource "aws_launch_template" "asg" {
 resource "aws_autoscaling_schedule" "asg" {
   for_each = { for i in local.schedule_config : i.name => i }
 
-  scheduled_action_name  = each.value.name
-  min_size               = each.value.min_size
-  max_size               = each.value.max_size
-  desired_capacity       = each.value.desired_capacity
-  start_time             = each.value.start_time
-  end_time               = each.value.end_time
+  scheduled_action_name = each.value.name
+  min_size              = each.value.min_size
+  max_size              = each.value.max_size
+  desired_capacity      = each.value.desired_capacity
+  start_time            = each.value.start_time
+  end_time              = each.value.end_time
+
+  autoscaling_group_name = each.value.is_vpc ? aws_autoscaling_group.asg_vpc[each.value.group_name].name : aws_autoscaling_group.asg_az[each.value.group_name].name
+}
+
+resource "aws_autoscaling_policy" "asg" {
+  for_each = { for i in local.scaling_config : i.name => i }
+
+  name               = each.value.name
+  scaling_adjustment = each.value.scaling_adjustment
+  adjustment_type    = each.value.adjustment_type
+  cooldown           = each.value.cooldown
+  policy_type        = each.value.policy_type
+
+  dynamic "predictive_scaling_configuration" {
+    for_each = each.value.predictive_scaling_configuration
+
+    content {
+
+      dynamic "metric_specification" {
+        for_each = predictive_scaling_configuration.value.metric_specification
+
+        content {
+          target_value = metric_specification.value.target_value
+
+          dynamic "customized_load_metric_specification" {
+            for_each = metric_specification.value.customized_load_metric
+
+            content {
+              dynamic "metric_data_queries" {
+                for_each = customized_load_metric_specification.value.metric_data_queries
+
+                content {
+                  id         = metric_data_queries.value.id
+                  expression = metric_data_queries.value.expression
+                }
+              }
+            }
+          }
+
+          dynamic "customized_capacity_metric_specification" {
+            for_each = metric_specification.value.customized_capacity_metric
+
+            content {
+              dynamic "metric_data_queries" {
+                for_each = customized_capacity_metric_specification.value.metric_data_queries
+
+                content {
+                  id          = metric_data_queries.value.id
+                  expression  = metric_data_queries.value.expression
+                  return_data = metric_data_queries.value.return_data
+                }
+              }
+            }
+          }
+
+          dynamic "customized_scaling_metric_specification" {
+            for_each = metric_specification.value.customized_scaling_metric
+
+            content {
+              dynamic "metric_data_queries" {
+                for_each = customized_scaling_metric_specification.value.metric_data_queries
+
+                content {
+                  id = metric_data_queries.value.id
+
+                  dynamic "metric_stat" {
+                    for_each = metric_data_queries.value.metric_stat
+
+                    content {
+                      stat = metric_stat.value.stat
+
+                      dynamic "metric" {
+                        for_each = metric_stat.value.metric
+
+                        content {
+                          metric_name = metric.value.name
+                          namespace   = metric.value.namespace
+
+                          dynamic "dimensions" {
+                            for_each = metric.value.dimensions
+
+                            content {
+                              name  = dimensions.value.name
+                              value = dimensions.value.value
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   autoscaling_group_name = each.value.is_vpc ? aws_autoscaling_group.asg_vpc[each.value.group_name].name : aws_autoscaling_group.asg_az[each.value.group_name].name
 }
