@@ -55,5 +55,5 @@ jobs:
     # Plan Terraform with dummy changes
     - name: Plan Terraform with dummy values
       env:
-        TF_VAR_config: "./test/dummy-values.yml"
+        TF_VAR_config: "./test/dummy-config.yml"
       run: terraform plan
