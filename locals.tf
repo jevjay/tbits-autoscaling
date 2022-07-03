@@ -40,63 +40,125 @@ locals {
     ]
   ]), [])
 
-  scaling_config = try(flatten([
+  scaling_config = flatten([
     for config in local.config : [
       for policy in config.scaling : {
-        group_name         = config.name
-        is_vpc             = try(config.vpc_zone_identifier, null) != null ? true : false
-        name               = policy.name
-        scaling_adjustment = policy.scaling_adjustment
-        adjustment_type    = policy.adjustment_type
-        cooldown           = policy.cooldown
-        policy_type        = try(policy.type, "SimpleScaling")
+        group_name                = config.name
+        is_vpc                    = try(config.vpc_zone_identifier, null) != null ? true : false
+        name                      = policy.name
+        scaling_adjustment        = try(policy.scaling_adjustment, null)
+        adjustment_type           = policy.adjustment_type
+        cooldown                  = try(policy.cooldown, null)
+        policy_type               = try(policy.type, "SimpleScaling")
+        estimated_instance_warmup = try(policy.estimated_instance_warmup, null)
+        enabled                   = try(policy.enabled, true)
+        min_adjustment_magnitude  = try(policy.min_adjustment_magnitude, null)
+        metric_aggregation_type   = try(policy.metric_aggregation_type, null)
 
-        predictive_scaling_configuration = try(flatten([
-          for cfg in policy.predictive_scaling_configuration : {
+        step_adjustment = [
+          for step in try(policy.step_adjustment, {}) : {
+            scaling_adjustment          = step.scaling_adjustment
+            metric_interval_lower_bound = step.metric_interval_lower_bound
+            metric_interval_upper_bound = step.metric_interval_upper_bound
+          }
+        ]
+
+        target_tracking_configuration = [
+          for cfg in try(policy.target_tracking_configuration, {}) : {
+            target_value     = cfg.target_value
+            disable_scale_in = try(cfg.disable_scale_in, false)
+            predefined_metric_specification = [{
+              type           = lookup(cfg.predefined_metric_specification, "type", null)
+              resource_label = lookup(cfg.predefined_metric_specification, "resource_label", null)
+            }]
+            customized_metric_specification = [{
+              dimension = lookup(cfg.customized_metric_specification, "dimension", {})
+              name      = lookup(cfg.customized_metric_specification, "name")
+              namespace = lookup(cfg.customized_metric_specification, "namespace", null)
+              statistic = lookup(cfg.customized_metric_specification, "statistic", null)
+              unit      = lookup(cfg.customized_metric_specification, "unit", null)
+            }]
+          }
+        ]
+
+        predictive_scaling_configuration = [
+          for cfg in try(policy.predictive_scaling_configuration, {}) : {
+            max_capacity_breach_behavior = try(cfg.max_capacity_breach_behavior, "HonorMaxCapacity")
+            max_capacity_buffer          = try(cfg.max_capacity_buffer, null)
+            mode                         = try(cfg.mode, "ForecastOnly")
+            scheduling_buffer_time       = try(cfg.scheduling_buffer_time, 0)
+
             metric_specification = {
               target_value = lookup(cfg.metric_specification, "target_value", null)
 
-              customized_load_metric = try(flatten([
-                for load_metric in lookup(cfg.metric_specification, "customized_load_metric", {}) : [
-                  for data_queries in load_metric.metric_data_queries : {
-                    id          = data_queries.id
-                    expression  = data_queries.expression
-                    return_data = data_queries.return_data
-                    label       = data_queries.label
-                    metric_stat = {}
-                  }
-                ]
-              ]), {})
+              predefined_load_metric = lookup(cfg.metric_specification, "predefined_load_metric", {})
 
-              customized_capacity_metric = try(flatten([
-                for capacity_metric in lookup(cfg.metric_specification, "customized_capacity_metric", {}) : [
-                  for data_queries in capacity_metric.metric_data_queries : {
-                    id          = data_queries.id
-                    expression  = data_queries.expression
-                    return_data = data_queries.return_data
-                    label       = data_queries.label
-                    metric_stat = {}
-                  }
-                ]
-              ]), {})
+              predefined_metric_pair = lookup(cfg.metric_specification, "predefined_metric_pair", {})
 
-              customized_scaling_metric = try(flatten([
-                for scaling_metric in lookup(cfg.metric_specification, "customized_scaling_metric", {}) : [
-                  for data_queries in scaling_metric.metric_data_queries : {
-                    id          = data_queries.id
-                    expression  = data_queries.expression
-                    return_data = data_queries.return_data
-                    label       = data_queries.label
-                    metric_stat = {}
+              predefined_scaling_metric = lookup(cfg.metric_specification, "predefined_scaling_metric", {})
+
+              customized_load_metric = lookup(cfg.metric_specification, "customized_load_metric", {}) != {} ? {
+                metric_data_queries = [
+                  for query in lookup(cfg.metric_specification, "customized_load_metric", {}) : {
+                    id          = try(query.id, null)
+                    expression  = try(query.expression, null)
+                    return_data = try(query.return_data, null)
+                    label       = try(query.label, null)
+                    metric_stat = try([{
+                      name      = lookup(query.metric_stat.metric, "name", null)
+                      namespace = lookup(query.metric_stat.metric, "namespace", null)
+                      stat      = lookup(query.metric_stat.metric, "stat", null)
+                      dimensions = {
+                        dimension = lookup(query.metric_stat.metric, "dimensions", {})
+                      }
+                    }], [])
                   }
                 ]
-              ]), {})
+              } : {}
+
+              customized_capacity_metric = lookup(cfg.metric_specification, "customized_capacity_metric", {}) != {} ? {
+                metric_data_queries = [
+                  for query in lookup(cfg.metric_specification, "customized_capacity_metric", {}) : {
+                    id          = try(query.id, null)
+                    expression  = try(query.expression, null)
+                    return_data = try(query.return_data, null)
+                    label       = try(query.label, null)
+                    metric_stat = try([{
+                      name      = lookup(query.metric_stat.metric, "name", null)
+                      namespace = lookup(query.metric_stat.metric, "namespace", null)
+                      stat      = lookup(query.metric_stat.metric, "stat", null)
+                      dimensions = {
+                        dimension = lookup(query.metric_stat.metric, "dimensions", {})
+                      }
+                    }], [])
+                  }
+                ]
+              } : {}
+
+              customized_scaling_metric = lookup(cfg.metric_specification, "customized_scaling_metric", {}) != {} ? {
+                metric_data_queries = [
+                  for query in lookup(cfg.metric_specification, "customized_scaling_metric", {}) : {
+                    id          = try(query.id, null)
+                    expression  = try(query.expression, null)
+                    return_data = try(query.return_data, null)
+                    label       = try(query.label, null)
+                    metric_stat = try([{
+                      name      = lookup(query.metric_stat.metric, "name", null)
+                      namespace = lookup(query.metric_stat.metric, "namespace", null)
+                      stat      = lookup(query.metric_stat.metric, "stat", null)
+                      dimensions = {
+                        dimension = lookup(query.metric_stat.metric, "dimensions", {})
+                      }
+                    }], [])
+                  }
+                ]
+              } : {}
             }
           }
-        ]), {})
+        ]
       }
     ]
-  ]), [])
+  ])
 
   # IAM role (instance profile) configuration
   instance_profile_config = try(flatten([

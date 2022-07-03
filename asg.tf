@@ -241,85 +241,207 @@ resource "aws_autoscaling_schedule" "asg" {
 resource "aws_autoscaling_policy" "asg" {
   for_each = { for i in local.scaling_config : i.name => i }
 
-  name               = each.value.name
-  scaling_adjustment = each.value.scaling_adjustment
-  adjustment_type    = each.value.adjustment_type
-  cooldown           = each.value.cooldown
-  policy_type        = each.value.policy_type
+  name                      = each.value.name
+  scaling_adjustment        = each.value.scaling_adjustment
+  adjustment_type           = each.value.adjustment_type
+  cooldown                  = each.value.cooldown
+  policy_type               = each.value.policy_type
+  estimated_instance_warmup = each.value.estimated_instance_warmup
+  enabled                   = each.value.enabled
+  min_adjustment_magnitude  = each.value.min_adjustment_magnitude
+  metric_aggregation_type   = each.value.metric_aggregation_type
+
+  dynamic "step_adjustment" {
+    for_each = each.value.step_adjustment
+
+    content {
+      scaling_adjustment          = step_adjustment.value.scaling_adjustment
+      metric_interval_lower_bound = step_adjustment.value.metric_interval_lower_bound
+      metric_interval_upper_bound = step_adjustment.value.metric_interval_upper_bound
+    }
+  }
+
+  dynamic "target_tracking_configuration" {
+    for_each = each.value.target_tracking_configuration
+
+    content {
+      target_value     = target_tracking_configuration.value.target_value
+      disable_scale_in = target_tracking_configuration.value.disable_scale_in
+
+      dynamic "predefined_metric_specification" {
+        for_each = target_tracking_configuration.value.predefined_metric_specification
+
+        content {
+          predefined_metric_type = predefined_metric_specification.value.type
+          resource_label         = predefined_metric_specification.value.resource_label
+        }
+      }
+
+      dynamic "customized_metric_specification" {
+        for_each = target_tracking_configuration.value.customized_metric_specification
+
+        content {
+          metric_name = customized_metric_specification.value.name
+          namespace   = customized_metric_specification.value.namespace
+          statistic   = customized_metric_specification.value.statistic
+          unit        = customized_metric_specification.value.unit
+
+          dynamic "metric_dimension" {
+            for_each = customized_metric_specification.value.dimension
+
+            content {
+              name  = metric_dimension.value.name
+              value = metric_dimension.value.value
+            }
+          }
+        }
+      }
+    }
+  }
 
   dynamic "predictive_scaling_configuration" {
     for_each = each.value.predictive_scaling_configuration
 
     content {
+      max_capacity_breach_behavior = predictive_scaling_configuration.value.max_capacity_breach_behavior
+      max_capacity_buffer          = predictive_scaling_configuration.value.max_capacity_buffer
+      mode                         = predictive_scaling_configuration.value.mode
+      scheduling_buffer_time       = predictive_scaling_configuration.value.scheduling_buffer_time
 
-      dynamic "metric_specification" {
-        for_each = predictive_scaling_configuration.value.metric_specification
+      metric_specification {
+        target_value = lookup(predictive_scaling_configuration.value.metric_specification, "target_value", null)
 
-        content {
-          target_value = metric_specification.value.target_value
+        dynamic "predefined_load_metric_specification" {
+          for_each = lookup(predictive_scaling_configuration.value.metric_specification, "predefined_load_metric", {})
 
-          dynamic "customized_load_metric_specification" {
-            for_each = metric_specification.value.customized_load_metric
-
-            content {
-              dynamic "metric_data_queries" {
-                for_each = customized_load_metric_specification.value.metric_data_queries
-
-                content {
-                  id         = metric_data_queries.value.id
-                  expression = metric_data_queries.value.expression
-                }
-              }
-            }
+          content {
+            predefined_metric_type = predefined_load_metric_specification.value.type
+            resource_label         = predefined_load_metric_specification.value.resource_label
           }
+        }
 
-          dynamic "customized_capacity_metric_specification" {
-            for_each = metric_specification.value.customized_capacity_metric
+        dynamic "predefined_metric_pair_specification" {
+          for_each = lookup(predictive_scaling_configuration.value.metric_specification, "predefined_metric_pair", {})
 
-            content {
-              dynamic "metric_data_queries" {
-                for_each = customized_capacity_metric_specification.value.metric_data_queries
-
-                content {
-                  id          = metric_data_queries.value.id
-                  expression  = metric_data_queries.value.expression
-                  return_data = metric_data_queries.value.return_data
-                }
-              }
-            }
+          content {
+            predefined_metric_type = predefined_load_metric_specification.value.type
+            resource_label         = predefined_load_metric_specification.value.resource_label
           }
+        }
 
-          dynamic "customized_scaling_metric_specification" {
-            for_each = metric_specification.value.customized_scaling_metric
+        dynamic "predefined_scaling_metric_specification" {
+          for_each = lookup(predictive_scaling_configuration.value.metric_specification, "predefined_scaling_metric", {})
 
-            content {
-              dynamic "metric_data_queries" {
-                for_each = customized_scaling_metric_specification.value.metric_data_queries
+          content {
+            predefined_metric_type = predefined_load_metric_specification.value.type
+            resource_label         = predefined_load_metric_specification.value.resource_label
+          }
+        }
 
-                content {
-                  id = metric_data_queries.value.id
+        dynamic "customized_load_metric_specification" {
+          for_each = lookup(predictive_scaling_configuration.value.metric_specification, "customized_load_metric", {})
 
-                  dynamic "metric_stat" {
-                    for_each = metric_data_queries.value.metric_stat
+          content {
+            dynamic "metric_data_queries" {
+              for_each = { for query in customized_load_metric_specification.value : query.id => query }
 
-                    content {
-                      stat = metric_stat.value.stat
+              content {
+                id          = metric_data_queries.value.id
+                expression  = metric_data_queries.value.expression
+                return_data = metric_data_queries.value.return_data
+                label       = metric_data_queries.value.label
 
-                      dynamic "metric" {
-                        for_each = metric_stat.value.metric
+                dynamic "metric_stat" {
+                  for_each = metric_data_queries.value.metric_stat
+
+                  content {
+                    stat = metric_stat.value.stat
+                    metric {
+                      metric_name = metric_stat.value.name
+                      namespace   = metric_stat.value.namespace
+
+                      dynamic "dimensions" {
+                        for_each = metric_stat.value.dimensions
 
                         content {
-                          metric_name = metric.value.name
-                          namespace   = metric.value.namespace
+                          name  = dimensions.value.name
+                          value = dimensions.value.value
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
 
-                          dynamic "dimensions" {
-                            for_each = metric.value.dimensions
+        dynamic "customized_capacity_metric_specification" {
+          for_each = lookup(predictive_scaling_configuration.value.metric_specification, "customized_capacity_metric", {})
 
-                            content {
-                              name  = dimensions.value.name
-                              value = dimensions.value.value
-                            }
-                          }
+          content {
+            dynamic "metric_data_queries" {
+              for_each = { for query in customized_capacity_metric_specification.value : query.id => query }
+
+              content {
+                id          = metric_data_queries.value.id
+                expression  = metric_data_queries.value.expression
+                return_data = metric_data_queries.value.return_data
+                label       = metric_data_queries.value.label
+
+                dynamic "metric_stat" {
+                  for_each = metric_data_queries.value.metric_stat
+
+                  content {
+                    stat = metric_stat.value.stat
+                    metric {
+                      metric_name = metric_stat.value.name
+                      namespace   = metric_stat.value.namespace
+
+                      dynamic "dimensions" {
+                        for_each = metric_stat.value.dimensions
+
+                        content {
+                          name  = dimensions.value.name
+                          value = dimensions.value.value
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        dynamic "customized_scaling_metric_specification" {
+          for_each = lookup(predictive_scaling_configuration.value.metric_specification, "customized_scaling_metric", {})
+
+          content {
+            dynamic "metric_data_queries" {
+              for_each = { for query in customized_scaling_metric_specification.value : query.id => query }
+
+              content {
+                id          = metric_data_queries.value.id
+                expression  = metric_data_queries.value.expression
+                return_data = metric_data_queries.value.return_data
+                label       = metric_data_queries.value.label
+
+                dynamic "metric_stat" {
+                  for_each = metric_data_queries.value.metric_stat
+
+                  content {
+                    stat = metric_stat.value.stat
+                    metric {
+                      metric_name = metric_stat.value.name
+                      namespace   = metric_stat.value.namespace
+
+                      dynamic "dimensions" {
+                        for_each = metric_stat.value.dimensions
+
+                        content {
+                          name  = dimensions.value.name
+                          value = dimensions.value.value
                         }
                       }
                     }
