@@ -238,6 +238,30 @@ resource "aws_autoscaling_schedule" "asg" {
   autoscaling_group_name = each.value.is_vpc ? aws_autoscaling_group.asg_vpc[each.value.group_name].name : aws_autoscaling_group.asg_az[each.value.group_name].name
 }
 
+resource "aws_cloudwatch_metric_alarm" "asg" {
+  for_each = { for i in local.scaling_alarm_config : i.name => i }
+
+  alarm_name          = each.value.name
+  comparison_operator = each.value.comparison_operator
+  evaluation_periods  = each.value.evaluation_periods
+  metric_name         = each.value.metric_name
+  namespace           = each.value.namespace
+  period              = each.value.period
+  statistic           = each.value.statistic
+  threshold           = each.value.threshold
+
+  dimensions = {
+    AutoScalingGroupName = each.value.is_az ? aws_autoscaling_group.asg_az[each.value.group_name].name : aws_autoscaling_group.asg_vpc[each.value.group_name].name
+  }
+
+  alarm_description = each.value.alarm_description
+  alarm_actions     = [aws_autoscaling_policy.asg[each.value.policy_name].arn]
+
+  tags = merge({
+    Name = each.value.name
+  }, local.common_tags)
+}
+
 resource "aws_autoscaling_policy" "asg" {
   for_each = { for i in local.scaling_config : i.name => i }
 

@@ -40,6 +40,27 @@ locals {
     ]
   ]), [])
 
+  scaling_alarm_config = try(flatten([
+    for config in local.config : [
+      for policy in config.scaling : [
+        for alarm in policy.alarm : {
+          group_name          = config.name
+          policy_name         = policy.name
+          name                = alarm.name
+          comparison_operator = alarm.comparison_operator
+          evaluation_periods  = alarm.evaluation_periods
+          is_az               = try(config.availability_zones, false)
+          description         = try(alarm.description, null)
+          metric_name         = try(alarm.metric_name, "CPUUtilization")
+          namespace           = try(alarm.namespace, "AWS/EC2")
+          period              = tostring(try(alarm.period, 60))
+          statistic           = try(alarm.statistic, "Average")
+          threshold           = tostring(try(alarm.threshold, 80))
+        }
+      ]
+    ]
+  ]), [])
+
   scaling_config = flatten([
     for config in local.config : [
       for policy in config.scaling : {
