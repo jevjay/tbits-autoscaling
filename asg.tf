@@ -62,6 +62,7 @@ resource "aws_autoscaling_group" "asg_vpc" {
     version = "$Latest"
   }
 
+  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_group#tag
   dynamic "tag" {
     for_each = try(flatten([
       for i, t in local.common_tags : {
@@ -81,16 +82,26 @@ resource "aws_autoscaling_group" "asg_vpc" {
 resource "aws_launch_template" "asg" {
   for_each = try({ for p in local.launch_template_config : p.group_name => p }, {})
 
-  name_prefix             = "${each.value.name}-config"
-  image_id                = each.value.image_id
-  instance_type           = each.value.instance_type
-  disable_api_termination = each.value.disable_api_termination
-  ebs_optimized           = each.value.ebs_optimized
+  name_prefix                          = "${each.value.name}-config"                     # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#name_prefix
+  image_id                             = each.value.image_id                             # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#image_id
+  instance_type                        = each.value.instance_type                        # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#instance_type
+  disable_api_termination              = each.value.disable_api_termination              # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#disable_api_termination
+  ebs_optimized                        = each.value.ebs_optimized                        # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#ebs_optimized
+  kernel_id                            = each.value.kernel_id                            # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#kernel_id
+  key_name                             = each.value.ssh_key_name                         # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#key_name
+  instance_initiated_shutdown_behavior = each.value.instance_initiated_shutdown_behavior # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#instance_initiated_shutdown_behavior
+  ram_disk_id                          = each.value.ram_disk_id                          # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#ram_disk_id
+  vpc_security_group_ids               = each.value.vpc_security_group_ids               # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#vpc_security_group_ids
 
+  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#user_data
+  user_data = base64encode(file("${path.module}/${each.value.user_data}"))
+
+  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#iam_instance_profile
   iam_instance_profile {
     name = aws_iam_instance_profile.asg[each.key].id
   }
 
+  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#block_device_mappings
   dynamic "block_device_mappings" {
     for_each = each.value.block_devices
 
@@ -104,6 +115,7 @@ resource "aws_launch_template" "asg" {
     }
   }
 
+  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#capacity_reservation_specification
   dynamic "capacity_reservation_specification" {
     for_each = each.value.capacity_reservation
 
@@ -112,6 +124,7 @@ resource "aws_launch_template" "asg" {
     }
   }
 
+  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#cpu_options
   dynamic "cpu_options" {
     for_each = each.value.cpu_options
 
@@ -121,6 +134,7 @@ resource "aws_launch_template" "asg" {
     }
   }
 
+  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#credit_specification
   dynamic "credit_specification" {
     for_each = each.value.credit_specification
 
@@ -129,6 +143,7 @@ resource "aws_launch_template" "asg" {
     }
   }
 
+  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#elastic_gpu_specifications
   dynamic "elastic_gpu_specifications" {
     for_each = each.value.elastic_gpu_specifications
 
@@ -137,6 +152,7 @@ resource "aws_launch_template" "asg" {
     }
   }
 
+  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#elastic_inference_accelerator
   dynamic "elastic_inference_accelerator" {
     for_each = each.value.elastic_inference_accelerator
 
@@ -145,8 +161,7 @@ resource "aws_launch_template" "asg" {
     }
   }
 
-  instance_initiated_shutdown_behavior = each.value.instance_initiated_shutdown_behavior
-
+  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#instance_market_options
   dynamic "instance_market_options" {
     for_each = each.value.instance_market_options
 
@@ -162,10 +177,7 @@ resource "aws_launch_template" "asg" {
     }
   }
 
-  kernel_id = each.value.kernel_id
-
-  key_name = each.value.ssh_key_name
-
+  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#license_specification
   dynamic "license_specification" {
     for_each = each.value.license_specification
 
@@ -174,6 +186,7 @@ resource "aws_launch_template" "asg" {
     }
   }
 
+  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#license_specification
   dynamic "metadata_options" {
     for_each = each.value.metadata_options
 
@@ -185,6 +198,7 @@ resource "aws_launch_template" "asg" {
     }
   }
 
+  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#monitoring
   dynamic "monitoring" {
     for_each = each.value.monitoring
 
@@ -193,6 +207,7 @@ resource "aws_launch_template" "asg" {
     }
   }
 
+  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#network_interfaces
   dynamic "network_interfaces" {
     for_each = each.value.network_interfaces
 
@@ -201,6 +216,7 @@ resource "aws_launch_template" "asg" {
     }
   }
 
+  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#placement
   dynamic "placement" {
     for_each = each.value.placement
 
@@ -209,10 +225,7 @@ resource "aws_launch_template" "asg" {
     }
   }
 
-  ram_disk_id = each.value.ram_disk_id
-
-  vpc_security_group_ids = each.value.vpc_security_group_ids
-
+  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#tag_specifications
   dynamic "tag_specifications" {
     for_each = each.value.tag_specifications
 
@@ -221,42 +234,43 @@ resource "aws_launch_template" "asg" {
       tags          = tag_specifications.value.tags
     }
   }
-
-  user_data = base64encode(file("${path.module}/${each.value.user_data}"))
 }
 
 resource "aws_autoscaling_schedule" "asg" {
   for_each = { for i in local.schedule_config : i.name => i }
 
-  scheduled_action_name = each.value.name
-  min_size              = each.value.min_size
-  max_size              = each.value.max_size
-  desired_capacity      = each.value.desired_capacity
-  start_time            = each.value.start_time
-  end_time              = each.value.end_time
+  scheduled_action_name = each.value.name             # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_schedule#scheduled_action_name
+  min_size              = each.value.min_size         # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_schedule#min_size
+  max_size              = each.value.max_size         # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_schedule#max_size
+  desired_capacity      = each.value.desired_capacity # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_schedule#desired_capacity
+  start_time            = each.value.start_time       # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_schedule#start_time
+  end_time              = each.value.end_time         # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_schedule#end_time
 
+  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_schedule#autoscaling_group_name
   autoscaling_group_name = each.value.is_vpc ? aws_autoscaling_group.asg_vpc[each.value.group_name].name : aws_autoscaling_group.asg_az[each.value.group_name].name
 }
 
 resource "aws_cloudwatch_metric_alarm" "asg" {
   for_each = { for i in local.scaling_alarm_config : i.name => i }
 
-  alarm_name          = each.value.name
-  comparison_operator = each.value.comparison_operator
-  evaluation_periods  = each.value.evaluation_periods
-  metric_name         = each.value.metric_name
-  namespace           = each.value.namespace
-  period              = each.value.period
-  statistic           = each.value.statistic
-  threshold           = each.value.threshold
+  alarm_name          = each.value.name                # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm#alarm_name
+  comparison_operator = each.value.comparison_operator # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm#comparison_operator
+  evaluation_periods  = each.value.evaluation_periods  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm#evaluation_periods
+  metric_name         = each.value.metric_name         # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm#metric_name
+  namespace           = each.value.namespace           # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm#namespace
+  period              = each.value.period              # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm#period
+  statistic           = each.value.statistic           # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm#statistic
+  threshold           = each.value.threshold           # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm#threshold
 
+  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm#dimensions
   dimensions = {
     AutoScalingGroupName = each.value.is_az ? aws_autoscaling_group.asg_az[each.value.group_name].name : aws_autoscaling_group.asg_vpc[each.value.group_name].name
   }
 
-  alarm_description = each.value.alarm_description
-  alarm_actions     = [aws_autoscaling_policy.asg[each.value.policy_name].arn]
+  alarm_description = each.value.alarm_description                             # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm#alarm_description
+  alarm_actions     = [aws_autoscaling_policy.asg[each.value.policy_name].arn] # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm#alarm_actions
 
+  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm#tags
   tags = merge({
     Name = each.value.name
   }, local.common_tags)
@@ -265,16 +279,17 @@ resource "aws_cloudwatch_metric_alarm" "asg" {
 resource "aws_autoscaling_policy" "asg" {
   for_each = { for i in local.scaling_config : i.name => i }
 
-  name                      = each.value.name
-  scaling_adjustment        = each.value.scaling_adjustment
-  adjustment_type           = each.value.adjustment_type
-  cooldown                  = each.value.cooldown
-  policy_type               = each.value.policy_type
-  estimated_instance_warmup = each.value.estimated_instance_warmup
-  enabled                   = each.value.enabled
-  min_adjustment_magnitude  = each.value.min_adjustment_magnitude
-  metric_aggregation_type   = each.value.metric_aggregation_type
+  name                      = each.value.name                      # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_policy#name
+  scaling_adjustment        = each.value.scaling_adjustment        # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_policy#scaling_adjustment
+  adjustment_type           = each.value.adjustment_type           # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_policy#adjustment_type
+  cooldown                  = each.value.cooldown                  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_policy#cooldown
+  policy_type               = each.value.policy_type               # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_policy#policy_type
+  estimated_instance_warmup = each.value.estimated_instance_warmup # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_policy#estimated_instance_warmup
+  enabled                   = each.value.enabled                   # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_policy#enabled
+  min_adjustment_magnitude  = each.value.min_adjustment_magnitude  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_policy#min_adjustment_magnitude
+  metric_aggregation_type   = each.value.metric_aggregation_type   # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_policy#metric_aggregation_type
 
+  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_policy#step_adjustment
   dynamic "step_adjustment" {
     for_each = each.value.step_adjustment
 
@@ -285,6 +300,7 @@ resource "aws_autoscaling_policy" "asg" {
     }
   }
 
+  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_policy#target_tracking_configuration
   dynamic "target_tracking_configuration" {
     for_each = each.value.target_tracking_configuration
 
@@ -323,6 +339,7 @@ resource "aws_autoscaling_policy" "asg" {
     }
   }
 
+  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_policy#predictive_scaling_configuration
   dynamic "predictive_scaling_configuration" {
     for_each = each.value.predictive_scaling_configuration
 
@@ -479,5 +496,6 @@ resource "aws_autoscaling_policy" "asg" {
     }
   }
 
+  # Details: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_policy#autoscaling_group_name
   autoscaling_group_name = each.value.is_vpc ? aws_autoscaling_group.asg_vpc[each.value.group_name].name : aws_autoscaling_group.asg_az[each.value.group_name].name
 }
