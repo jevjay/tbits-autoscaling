@@ -1,6 +1,6 @@
-![Terrabits logo](./img/terrabits-logo.png)
+![tbits logo](./img/tbits-logo.png)
 
-# terrabits-autoscaling
+# tbits-autoscaling
 Terraform module used to provision AWS Auto Scaling Groups &amp; their supporting resources
 
 ## Usage
@@ -9,7 +9,7 @@ Create an ASG group with autoscaling policies
 
 ```hcl
 module "autoscaling_groups" {
-  source  = "github.com/jevjay/terraforest-autoscaling"
+  source  = "github.com/jevjay/tbits-autoscaling"
 
   config = "path/to/configuration"
   shared_tags = {
