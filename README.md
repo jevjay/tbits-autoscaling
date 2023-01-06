@@ -1,6 +1,6 @@
-![tbits logo](./img/tbits-logo.png)
+![teryaml logo](./img/tbits-logo.png)
 
-# tbits-autoscaling
+# teryaml-autoscaling
 Terraform module used to provision AWS Auto Scaling Groups &amp; their supporting resources
 
 ## Usage
